@@ -1,9 +1,10 @@
 exports.index = (req, res) ->
-  res.render "index",
+  res.render "index"
     title: "Polypong"
+    pongHost: "ws://localhost:3000"
 
 exports.about = (req, res) ->
-  res.render "about",
+  res.render "about"
     title: "About"
 
 exports.loginPage = (req, res) ->
@@ -16,4 +17,3 @@ exports.loginAction = (req, res) ->
   console.log "login: #{req.body.password}"
   res.render "index"
     title: "Polypong"
-

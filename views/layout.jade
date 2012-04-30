@@ -4,15 +4,16 @@ html
     title= title
     link(rel='stylesheet', href='/stylesheets/style.css')
     script(type='text/javascript', src='/javascripts/jquery.js')
+    script(type='text/javascript', src="/javascripts/socket.io.min.js")
     script(type='text/javascript', src='/javascripts/coffeescript.js')
     script(type='text/coffeescript', src='/javascripts/game.coffee')
-    
+
   body
     header
       h1= title
 
     section#body!= body
-    
+
     footer
       span Powered by &nbsp;
         a(href='https://github.com/Oregu/') Oregu
@@ -20,6 +21,3 @@ html
         a(href='https://github.com/Axblade/') Axblade
       br
       span &nbsp; &copy; 2012
-       
-
-         

@@ -1,4 +1,3 @@
-h1= title
 p Welcome to #{title}
 div#game
   div#score
@@ -6,3 +5,13 @@ div#game
   div#game_board
     canvas#game_board_canvas(width = 700, height = 400)
 
+:coffeescript
+  socket = io.connect "ws://localhost:3000"
+
+  socket.on 'connect', ->
+    console.log "Socket opened, Master!"
+  socket.on 'state', (data) ->
+    console.log "I get state message from server"
+
+  socket.emit 'join'
+  socket.emit 'state', moved: Math.random()
