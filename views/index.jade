@@ -6,7 +6,7 @@ div#game
     canvas#game_board_canvas(width = 700, height = 400)
 
 :coffeescript
-  socket = io.connect "ws://localhost:3000"
+  socket = io.connect "ws://#{window.location.host}"
 
   socket.on 'connect', ->
     console.log "Socket opened, Master!"

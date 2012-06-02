@@ -1,6 +1,5 @@
 express = require("express")
 routes = require("./routes")
-spt = require(__dirname + "/precompiler/precompiler")
 io = require('socket.io')
 
 app = module.exports = express.createServer()
@@ -18,20 +17,17 @@ app.configure "development", ->
     showStack: true
   )
 
-# heroku configure
-port = process.env.PORT || 3000
+port = process.env['app_port'] || 3000
 
-app.configure "production", ->
+app.configure 'production', ->
   app.use express.errorHandler()
 
-app.get "/", routes.index
-app.get "/about", routes.about
-app.get "/login", routes.loginPage
-app.post "/login", routes.loginAction
+app.get '/', routes.index
+app.get '/about', routes.about
+app.get '/login', routes.loginPage
+app.post '/login', routes.loginAction
 
 app.listen port
-
-spt.precompile __dirname + "/public/javascripts"
 
 console.log "Express server listening on port %d in %s mode", app.address().port, app.settings.env
 

@@ -1,0 +1,8 @@
+coffee -c app.coffee
+cd routes
+coffee -c index.coffee
+cd ..
+cd public/javascripts
+coffee -c game.coffee
+cd ../..
+

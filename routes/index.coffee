@@ -1,7 +1,6 @@
 exports.index = (req, res) ->
   res.render "index"
     title: "Polypong"
-    pongHost: "ws://localhost:3000"
 
 exports.about = (req, res) ->
   res.render "about"
