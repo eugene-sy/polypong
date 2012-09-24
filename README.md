@@ -2,7 +2,7 @@
 Polypong is a browser based multiplayer Pong game.  
 It's implemented with canvas, websockets, node.js, CoffeeScript, chocolate bars and cookies.
 
-You can see current version on nodester:
+Current version on nodester:
 http://polypong.nodester.com/
 
 ## Developers

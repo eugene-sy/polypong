@@ -1,6 +1,8 @@
 body {
-  padding: 50px;
+  padding-top: 50px;
   font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+  margin: 0 auto;
+  width: 800px;
 }
 
 a {
@@ -8,7 +10,7 @@ a {
 }
 
 canvas#game_board_canvas {
-	width: 700px;
-	height: 400px;
-	border: 1px solid #555;
+  width: 700px;
+  height: 400px;
+  border: 1px solid #555;
 }

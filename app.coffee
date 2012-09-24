@@ -1,20 +1,22 @@
 express = require 'express'
 routes = require './routes'
 io = require 'socket.io'
+cookie = require 'cookie'
 
 app = module.exports = express.createServer()
 app.configure ->
   app.set "views", __dirname + "/views"
   app.set "view engine", "jade"
   app.use express.bodyParser()
+  app.use express.cookieParser()
+  app.use express.session {secret: 'thisisasecretnobodyshouldseehoweverthisisdevwhowantstohackponggameanyway?' }
   app.use express.methodOverride()
   app.use app.router
   app.use express.static(__dirname + "/public")
 
-app.configure "development", ->
+app.configure 'development', ->
   app.use express.errorHandler(
-    dumpExceptions: true
-    showStack: true
+    dumpExceptions: true, showStack: true
   )
 
 port = process.env['app_port'] || 3000
@@ -55,8 +57,10 @@ count = 0
 # - quit - some user quitted
 
 io = io.listen app
+
 io.sockets.on 'connection', (socket) ->
-  console.log "Have a connection: #{socket.id}"
+  sid = cookie.parse(socket.handshake.headers.cookie)['connect.sid']
+  console.log "Have a connection: '#{socket.id}' with sid: '#{sid}'"
 
   socket.on 'join', (data) ->
     console.log "I can has join: #{socket.id}"
