@@ -10,11 +10,17 @@
       this.y_positions = [10, 10];
       this.side = 0;
       this.enemy_side = 1;
+      this.ball_pos = [100, 100];
+      this.angle = (20 + Math.random() * 50) * Math.PI / 180;
       this.canvas_width = 780;
       this.canvas_height = 440;
       this.racket_height = 55;
       this.racket_width = 10;
+      this.ball_size = 8;
       this.dy = 5;
+      this.dt = 20;
+      this.dt_in_sec = this.dt / 1000;
+      this.ball_v = 200;
       this.key_left = 37;
       this.key_up = 38;
       this.key_right = 39;
@@ -24,7 +30,7 @@
       this.dir_idle = 0;
       this.dir_down = 1;
       this.players_start_pos = [[10, 80], [760, this.canvas_height - 80 - this.racket_height]];
-      this.players_colors = ['rgb(255,255,255)', 'rgb(255,255,255)'];
+      this.racket_color = '#fff';
     }
 
     Game.prototype.drawRacket = function(x, y, color) {
@@ -34,17 +40,63 @@
 
     Game.prototype.drawBall = function(x, y) {
       this.ctx.fillStyle = "rgb(200, 200, 200)";
-      return this.ctx.fillRect(x, y, 8, 8);
+      return this.ctx.fillRect(x, y, this.ball_size, this.ball_size);
     };
 
     Game.prototype.drawBoard = function() {
-      this.processInputs();
       this.ctx.clearRect(0, 0, this.canvas_width, this.canvas_height);
       this.ctx.fillStyle = "rgb(200, 200, 200)";
       this.ctx.fillRect(389, 5, 1, 430);
-      this.drawRacket(this.players_start_pos[this.side][0], this.y_positions[this.side], this.players_colors[this.side]);
-      this.drawRacket(this.players_start_pos[this.enemy_side][0], this.y_positions[this.enemy_side], this.players_colors[this.enemy_side]);
-      return this.drawBall(100, 100);
+      this.drawRacket(this.players_start_pos[this.side][0], this.y_positions[this.side], this.racket_color);
+      this.drawRacket(this.players_start_pos[this.enemy_side][0], this.y_positions[this.enemy_side], this.racket_color);
+      return this.drawBall(this.ball_pos[0], this.ball_pos[1]);
+    };
+
+    Game.prototype.gameLoop = function() {
+      this.updateState();
+      return this.drawBoard();
+    };
+
+    Game.prototype.updateState = function() {
+      return this.updateBall();
+    };
+
+    Game.prototype.updateBall = function() {
+      var ball_in_racket, ds;
+      ds = this.ball_v * this.dt_in_sec;
+      this.ball_pos[0] += ds * Math.cos(this.angle);
+      this.ball_pos[1] += ds * Math.sin(this.angle);
+      if (this.ball_pos[0] < 0) {
+        this.ball_pos[0] = 0;
+        this.angle = Math.PI - this.angle;
+        return;
+      }
+      if (this.ball_pos[0] > this.canvas_width - this.ball_size) {
+        this.ball_pos[0] = this.canvas_width - this.ball_size;
+        this.angle = Math.PI - this.angle;
+        return;
+      }
+      if (this.ball_pos[1] < 0) {
+        this.ball_pos[1] = 0;
+        this.angle = -this.angle;
+        return;
+      }
+      if (this.ball_pos[1] > this.canvas_height - this.ball_size) {
+        this.ball_pos[1] = this.canvas_height - this.ball_size;
+        this.angle = -this.angle;
+        return;
+      }
+      ball_in_racket = this.ball_pos[1] >= this.y_positions[0] && this.ball_pos[1] <= this.y_positions[0] + this.racket_height;
+      if (this.ball_pos[0] < 20 && ball_in_racket) {
+        this.ball_pos[0] = 20;
+        this.angle = Math.PI - this.angle;
+        return;
+      }
+      ball_in_racket = this.ball_pos[1] >= this.y_positions[1] && this.ball_pos[1] <= this.y_positions[1] + this.racket_height;
+      if (this.ball_pos[0] > this.canvas_width - 20 && ball_in_racket) {
+        this.ball_pos[0] = this.canvas_width - 20 - this.ball_size;
+        this.angle = Math.PI - this.angle;
+      }
     };
 
     Game.prototype.keyboardDown = function(evt) {
@@ -76,8 +128,6 @@
       }
     };
 
-    Game.prototype.processInputs = function() {};
-
     Game.prototype.sendState = function(dir) {
       return this.socket.emit('state', {
         side: this.side,
@@ -89,11 +139,10 @@
       var canvas, self;
       canvas = document.getElementById('game_board_canvas');
       this.ctx = canvas.getContext('2d');
-      this.drawBoard();
       self = this;
       return setInterval((function() {
-        return self.drawBoard();
-      }), 500);
+        return self.gameLoop();
+      }), this.dt);
     };
 
     Game.prototype.start = function(socket) {
@@ -106,7 +155,6 @@
       socket.on('joined', function(side) {
         self.side = side;
         self.enemy_side = side === 0 ? 1 : 0;
-        self.y_position = self.players_start_pos[self.side][1];
         $(window).on('keydown', function(e) {
           return self.keyboardDown(e);
         });
@@ -115,13 +163,8 @@
         });
       });
       socket.on('move', function(data) {
-        self.y_positions[self.side] = data.positions[self.side];
-        self.y_positions[self.enemy_side] = data.positions[self.enemy_side];
-        console.log("" + self.y_positions[self.side] + ", " + self.y_positions[self.enemy_side]);
-        self.down_pressed = false;
-        self.up_pressed = false;
-        self.players_states = [0, 0];
-        return self.drawBoard();
+        self.y_positions = data.positions;
+        return console.log("" + self.y_positions[self.side] + ", " + self.y_positions[self.enemy_side]);
       });
       socket.on('busy', function(data) {});
       socket.emit('join');

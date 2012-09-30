@@ -47,7 +47,7 @@ gamers = {}
 count = 0
 state_messages = [0, 0]
 init_position = 440 / 2 - 40
-racket_positions = [init_position, init_position]
+racket_positions = [init_position - 60, init_position + 60]
 state_messages_counter = 0
 
 move_down = (position) ->
@@ -61,6 +61,10 @@ detect_move = (side) ->
     racket_positions[side] = move_down(racket_positions[side])
   else if (state_messages[side]) == 1
     racket_positions[side] = move_up(racket_positions[side])
+  racket_positions[0] = 0 if racket_positions[0] < 0
+  racket_positions[1] = 0 if racket_positions[1] < 0
+  racket_positions[0] = 440 - 55 if racket_positions[0] > 440 - 55
+  racket_positions[1] = 440 - 55 if racket_positions[1] > 440 - 55
 
 # Here is all our socket machimery.
 # We have server events:
@@ -81,6 +85,7 @@ io.sockets.on 'connection', (socket) ->
   socket.on 'join', (data) ->
     if sid of gamers
       gamers[sid].yourSide gamers[sid].side
+      socket.emit 'move', {positions: racket_positions}
       return
     if count == 2
       socket.emit 'busy'
@@ -88,6 +93,7 @@ io.sockets.on 'connection', (socket) ->
     console.log "I can has join: #{sid}"
     gamers[sid] = new Gamer socket
     gamers[sid].yourSide count
+    socket.emit 'move', {positions: racket_positions}
     count++
 
   socket.on 'state', (data) ->

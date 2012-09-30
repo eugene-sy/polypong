@@ -82,7 +82,7 @@
 
   init_position = 440 / 2 - 40;
 
-  racket_positions = [init_position, init_position];
+  racket_positions = [init_position - 60, init_position + 60];
 
   state_messages_counter = 0;
 
@@ -96,9 +96,21 @@
 
   detect_move = function(side) {
     if (state_messages[side] === -1) {
-      return racket_positions[side] = move_down(racket_positions[side]);
+      racket_positions[side] = move_down(racket_positions[side]);
     } else if (state_messages[side] === 1) {
-      return racket_positions[side] = move_up(racket_positions[side]);
+      racket_positions[side] = move_up(racket_positions[side]);
+    }
+    if (racket_positions[0] < 0) {
+      racket_positions[0] = 0;
+    }
+    if (racket_positions[1] < 0) {
+      racket_positions[1] = 0;
+    }
+    if (racket_positions[0] > 440 - 55) {
+      racket_positions[0] = 440 - 55;
+    }
+    if (racket_positions[1] > 440 - 55) {
+      return racket_positions[1] = 440 - 55;
     }
   };
 
@@ -111,6 +123,9 @@
     socket.on('join', function(data) {
       if (sid in gamers) {
         gamers[sid].yourSide(gamers[sid].side);
+        socket.emit('move', {
+          positions: racket_positions
+        });
         return;
       }
       if (count === 2) {
@@ -120,6 +135,9 @@
       console.log("I can has join: " + sid);
       gamers[sid] = new Gamer(socket);
       gamers[sid].yourSide(count);
+      socket.emit('move', {
+        positions: racket_positions
+      });
       return count++;
     });
     socket.on('state', function(data) {
