@@ -22,9 +22,11 @@ window.Game = class Game
     @key_down  = 40
     @key_space = 32
 
+    @dir_up = -1
+    @dir_idle = 0
+    @dir_down = 1
     @players_start_pos = [[10, 80], [760, @canvas_height - 80 - @racket_height]]
     @players_colors = ['rgb(255,255,255)', 'rgb(255,255,255)']
-    @players_states = [0, 0]
 
 
   # Drawing functions
@@ -45,34 +47,33 @@ window.Game = class Game
     @drawRacket @players_start_pos[@side][0], @y_positions[@side], @players_colors[@side]
     @drawRacket @players_start_pos[@enemy_side][0], @y_positions[@enemy_side], @players_colors[@enemy_side]
     @drawBall 100, 100
-    @sendState()
 
 
   # Keyboard functions
 
   keyboardDown: (evt) ->
     switch evt.which
-      when @key_down then @down_pressed = true; @up_pressed = false
-      when @key_up   then @up_pressed = true; @down_pressed = false
+      when @key_down then @down_pressed = true; @up_pressed = false; @sendState @dir_down
+      when @key_up   then @up_pressed = true; @down_pressed = false; @sendState @dir_up
 
   keyboardUp: (evt) ->
     switch evt.which
-      when Game.key_down then @down_pressed = false
-      when Game.key_up   then @up_pressed = false
+      when @key_down then @down_pressed = false; @sendState @dir_idle unless @up_pressed
+      when @key_up   then @up_pressed = false; @sendState @dir_idle unless @down_pressed
 
   processInputs: ->
-    if @up_pressed
-      #@y_positions -= Game.dy
-      @players_states[@side] = -1
-    else if @down_pressed
-      #@y_positions += Game.dy
-      @players_states[@side] = 1
-    else
-      @players_states[@side] = 0
-    console.log @players_states[@side]
+#    if @up_pressed
+#      @y_positions -= @dy
+#      @players_states[@side] = -1
+#    else if @down_pressed
+#      @y_positions += @dy
+#      @players_states[@side] = 1
+#    else
+#      @players_states[@side] = 0
+#    console.log @players_states[@side]
 
-  sendState: ->
-    @socket.emit 'state', {side: @side, state: @players_states[@side]}
+  sendState: (dir) ->
+    @socket.emit 'state', {side: @side, state: dir}
 
   # Game control functions
 
