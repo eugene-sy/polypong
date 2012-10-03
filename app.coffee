@@ -4,7 +4,7 @@ io = require 'socket.io'
 cookie = require 'cookie'
 
 # classes
-Gamer = require './game/gamer'
+Game = require './game/game'
 
 # functions
 detect_move = require './game/game'
@@ -39,13 +39,8 @@ app.listen port
 
 console.log "Express server listening on port %d in %s mode", app.address().port, app.settings.env
 
-gamers = {}
+game = new Game
 count = 0
-state_messages = [0, 0]
-init_position = 440 / 2 - 40
-racket_positions = [init_position - 60, init_position + 60]
-state_messages_counter = 0
-
 
 io = io.listen app
 
@@ -54,35 +49,26 @@ io.sockets.on 'connection', (socket) ->
   console.log "Have a connection: #{sid} (socket id: #{socket.id})"
 
   socket.on 'join', (data) ->
-    if sid of gamers
-      gamers[sid].yourSide gamers[sid].side
-      socket.emit 'move', {positions: racket_positions}
+    if sid of game.gamers
+      game.tellSide sid
+      game.sendMove sid
       return
     if count == 2
       socket.emit 'busy'
       return
     console.log "I can has join: #{sid}"
-    gamers[sid] = new Gamer socket
-    gamers[sid].yourSide count
-    socket.emit 'move', {positions: racket_positions}
+    game.addGamer sid, socket, count
+    game.sendMove sid
     count++
 
   socket.on 'state', (data) ->
     console.log "Player #{data.side} moving #{data.state}"
-    console.log racket_positions
-    state_messages[data.side] = data.state
-    state_messages_counter++
-    if state_messages_counter == 2
-      console.log 'sending data'
-      racket_positions = detect_move state_messages, racket_positions
-      state_messages = [0, 0]
-      state_messages_counter = 0
-      socket.emit 'move', {positions: racket_positions}
+    game.setState sid, data.state
+    game.detectMove()
+    game.sendMoveAll()
 
   socket.on 'disconnect', ->
-    return unless sid of gamers && gamers[sid].socket.id == socket.id
+    return unless sid of game.gamers && game.gamers[sid].socket.id == socket.id
     console.log "Disconnecting: #{sid}"
-    delete gamers[sid]
+    game.oneQuitted sid
     count--
-    for id, gamer of gamers
-      gamer.heQuitted sid if (id != sid)

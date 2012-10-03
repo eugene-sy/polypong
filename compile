@@ -7,6 +7,5 @@ coffee -c game.coffee
 cd ../..
 cd game
 coffee -c game.coffee
-coffee -c gamer.coffee
 cd ..
 
