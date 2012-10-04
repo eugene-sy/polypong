@@ -8,12 +8,15 @@
 # - state - update his and enemies position
 # - quit - some user quitted
 
+cookie = require 'cookie'
+
 module.exports = class Game
 
   constructor: ->
     @gamers = {}
     initPos = 440 / 2 - 40
     @positions = [initPos - 60, initPos + 60]
+    @count = 0
 
   addGamer: (sid, socket, side) ->
     @gamers[sid] = {socket: socket, state: 0, side: side, pos: @positions[side]}
@@ -43,6 +46,36 @@ module.exports = class Game
       @positions[gamer.side] = gamer.pos
 
   oneQuitted: (sidQuit) ->
-    delete @gamers[sid]
+    delete @gamers[sidQuit]
     for sid, gamer of @gamers
-      gamer.socket.emit 'quit', sid if (sidQuit != sid)
+      gamer.socket.emit('quit', sid) if (sidQuit != sid)
+
+  connect: (socket) ->
+    sid = cookie.parse(socket.handshake.headers.cookie)['connect.sid']
+    console.log "Have a connection: #{sid} (socket id: #{socket.id})"
+
+    self = @
+    socket.on 'join', (data) ->
+      if sid of self.gamers
+        self.tellSide sid
+        self.sendMove sid
+        return
+      if self.count == 2
+        socket.emit 'busy'
+        return
+      console.log "I can has join: #{sid}"
+      self.addGamer sid, socket, self.count
+      self.sendMove sid
+      self.count++
+
+    socket.on 'state', (data) ->
+      console.log "Player #{data.side} moving #{data.state}"
+      self.setState sid, data.state
+      self.detectMove()
+      self.sendMoveAll()
+
+    socket.on 'disconnect', ->
+      return unless sid of self.gamers && self.gamers[sid].socket.id == socket.id
+      console.log "Disconnecting: #{sid}"
+      self.oneQuitted sid
+      self.count--

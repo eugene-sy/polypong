@@ -1,7 +1,6 @@
 express = require 'express'
 routes = require './routes'
 io = require 'socket.io'
-cookie = require 'cookie'
 
 # classes
 Game = require './game/game'
@@ -40,35 +39,7 @@ app.listen port
 console.log "Express server listening on port %d in %s mode", app.address().port, app.settings.env
 
 game = new Game
-count = 0
 
 io = io.listen app
-
 io.sockets.on 'connection', (socket) ->
-  sid = cookie.parse(socket.handshake.headers.cookie)['connect.sid']
-  console.log "Have a connection: #{sid} (socket id: #{socket.id})"
-
-  socket.on 'join', (data) ->
-    if sid of game.gamers
-      game.tellSide sid
-      game.sendMove sid
-      return
-    if count == 2
-      socket.emit 'busy'
-      return
-    console.log "I can has join: #{sid}"
-    game.addGamer sid, socket, count
-    game.sendMove sid
-    count++
-
-  socket.on 'state', (data) ->
-    console.log "Player #{data.side} moving #{data.state}"
-    game.setState sid, data.state
-    game.detectMove()
-    game.sendMoveAll()
-
-  socket.on 'disconnect', ->
-    return unless sid of game.gamers && game.gamers[sid].socket.id == socket.id
-    console.log "Disconnecting: #{sid}"
-    game.oneQuitted sid
-    count--
+  game.connect socket

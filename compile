@@ -3,9 +3,8 @@ cd routes
 coffee -c index.coffee
 cd ..
 cd public/javascripts
-coffee -c game.coffee
+coffee -c pong.coffee
 cd ../..
 cd game
 coffee -c game.coffee
 cd ..
-
