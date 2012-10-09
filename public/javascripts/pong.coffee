@@ -1,6 +1,8 @@
-window.Game = class Game
+window.Game = class Game extends GameCore
 
   constructor: ->
+    super()
+
     # Vars
     @upPressed = false
     @downPressed = false
@@ -8,15 +10,8 @@ window.Game = class Game
     @side = 0
     @enemySide = 1
     @ballPos = [100, 100]
-    @angle = (20 + Math.random()*50)*Math.PI/180
 
     # Constants
-    @canvasWidth = 780
-    @canvasHeight = 440
-    @racketHeight = 55
-    @racketWidth = 10
-    @ballSize = 8
-
     @dy = 5
     @dt = 20
     @dtInSec = @dt/1000
@@ -52,7 +47,6 @@ window.Game = class Game
     @drawRacket @playersStartPos[@side][0], @yPositions[@side], @racketColor
     @drawRacket @playersStartPos[@enemySide][0], @yPositions[@enemySide], @racketColor
     @drawBall @ballPos[0], @ballPos[1]
-    console.log "#{@yPositions[self.side]}, #{@yPositions[self.enemySide]}, ball: #{@ballPos}"
 
   # Game logic
 
@@ -120,29 +114,26 @@ window.Game = class Game
   startGame: ->
     canvas = document.getElementById('game_board_canvas')
     @ctx = canvas.getContext '2d'
-    self = @
-    setInterval (-> self.gameLoop()), @dt
+    setInterval (=> @gameLoop()), @dt
 
   start: (socket) ->
-    self = @
     @socket = socket
 
-    socket.on 'connect', ->
+    socket.on 'connect', =>
       console.log "Socket opened, Master!"
 
-    socket.on 'joined', (side) ->
-      self.side = side
-      self.enemySide = if side == 0 then 1 else 0
+    socket.on 'joined', (side) =>
+      @side = side
+      @enemySide = if side == 0 then 1 else 0
       # Can't move while not joined
-      $(window).on 'keydown', (e) -> self.keyboardDown e
-      $(window).on 'keyup', (e) -> self.keyboardUp e
+      $(window).on 'keydown', (e) => @keyboardDown e
+      $(window).on 'keyup', (e) => @keyboardUp e
 
-    socket.on 'move', (data) ->
-      self.yPositions = data.positions
-      self.ballPos = data.ballPosition
-      # console.log "#{self.y_positions[self.side]}, #{self.y_positions[self.enemy_side]}, ball: #{data.ballPosition}"
+    socket.on 'move', (data) =>
+      @yPositions = data.positions
+      @ballPos = data.ballPosition
 
-    socket.on 'busy', (data) ->
+    socket.on 'busy', (data) =>
 
     socket.emit 'join'
 

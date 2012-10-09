@@ -6,5 +6,6 @@ cd public/javascripts
 coffee -c pong.coffee
 cd ../..
 cd game
+coffee -c game.core.coffee
 coffee -c game.coffee
 cd ..
