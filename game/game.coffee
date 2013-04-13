@@ -20,22 +20,24 @@ module.exports = class Game extends GameCore
 
     @gamers = {}
     initPos = @canvasHeight / 2 - 40
-    @gs = [{pos: initPos - @racketHeight, state: @dirIdle},
-           {pos: initPos + @racketHeight, state: @dirIdle}]
+    @gs = [{pos: initPos - @racketHeight, dir: @dirIdle, updates: [], lastSeq: -1},
+           {pos: initPos + @racketHeight, dir: @dirIdle, updates: [], lastSeq: -1}]
     @ballResetOffset = 50
     @scores = [0, 0]
     @count = 0
     @inDaLoop = false
 
   addGamer: (sid, socket, side) ->
-    @gamers[sid] = {socket: socket, state: 0, side: side, pos: @gs[side].pos}
+    @gamers[sid] = {socket: socket, updates: [], side: side, pos: @gs[side].pos}
     @sendJoined sid
 
   sendJoined: (sid) ->
     @gamers[sid].socket.emit 'joined', @gamers[sid].side
 
   sendMove: (sid) ->
-    @gamers[sid].socket.emit 'move', {gamers: @gs, ball: {pos: @ballPosition, v: @ballV, angle: @angle}}
+    g = @gamers[sid]
+    @gs[g.side].updates = g.updates
+    g.socket.emit 'move', {gamers: @gs, ball: {pos: @ballPosition, v: @ballV, angle: @angle}}
 
   sendMoveAll: ->
     for sid of @gamers
@@ -48,8 +50,8 @@ module.exports = class Game extends GameCore
     for sid of @gamers
       @sendScore sid
 
-  setState: (sid, state) ->
-    @gamers[sid].state = state
+  updateState: (sid, dir, seq) ->
+    @gamers[sid].updates.push {dir: dir, seq: seq, t: @time()}
 
   placeBall: (side) ->
     @ballPosition[1] = @gs[side].pos + @racketHeight / 2
@@ -60,10 +62,16 @@ module.exports = class Game extends GameCore
       @ballPosition[0] = @canvasWidth - @ballResetOffset
       @angle = Math.PI + Math.asin((@gs[1].pos - @gs[0].pos + @racketHeight) / @canvasWidth)
 
-  moveRackets: ->
+  moveRackets: (lastTime) ->
     for sid, gamer of @gamers
-      gamer.pos = @moveRacket gamer.state, gamer.pos
+      gamer.pos = @moveRacket gamer.dir, gamer.updates, gamer.pos, @updateTime, lastTime
       @gs[gamer.side].pos = gamer.pos
+      if gamer.updates.length
+        lastUpdate = gamer.updates[gamer.updates.length-1]
+        gamer.dir = lastUpdate.dir
+        @gs[gamer.side].lastSeq = lastUpdate.seq
+      gamer.updates = []
+      @gs[gamer.side].updates = [] # FIXME seems wrong, clear after updates sent only
 
   checkScoreUpdate: ->
     if @ballPosition[0] < 0 or @ballPosition[0] > @canvasWidth - @ballSize
@@ -90,11 +98,12 @@ module.exports = class Game extends GameCore
     @inDaLoop = false
     @scores = [0, 0]
 
-  gameStep:  ->
-    @moveRackets()
+  gameStep: ->
+    @updateTime = @time()
+    lastTime = @updateTime - @dt # FIXME do as in client code
+    @moveRackets lastTime
     @moveBall()
     @checkScoreUpdate()
-    @checkBallCollision()
     @sendMoveAll()
 
   oneQuitted: (sidQuit) ->
@@ -122,8 +131,7 @@ module.exports = class Game extends GameCore
       @sendScore sid
 
     socket.on 'state', (data) =>
-      console.log "Player #{data.side} moving #{data.state}"
-      @setState sid, data.state
+      @updateState sid, data.dir, data.seq
 
     socket.on 'disconnect', =>
       return unless sid of @gamers && @gamers[sid].socket.id == socket.id

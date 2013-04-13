@@ -6,12 +6,13 @@ window.Game = class Game extends GameCore
     # Vars
     @upPressed = false
     @downPressed = false
+    @dir = @dirIdle # Current moving direction on the moment of updateState function (or last moving direction after update, if you prefer)
     @side = 0
     @enemySide = 1
     @scores = [0, 0]
-
-    # Game flags
-    @updateScoreFlag = true
+    @dirUpdates = [] # arrays of games inputs
+    @seq = -1        # sequence number for acknowledgements
+    @pos
 
     # Constants
     @keyLeft = 37
@@ -46,22 +47,18 @@ window.Game = class Game extends GameCore
   gameLoop: ->
     @updateState()
     @drawBoard()
-    @updateScores() if @updateScoreFlag
 
   updateState: ->
-    @updateBall()
-    enemy = @gs[@enemySide]
-    # Interpolate enemy moves
-    enemy.pos = @moveRacket enemy.state, enemy.pos
-    me = @gs[@side]
-    me.pos = @moveRacket @dir(), me.pos
-
-  dir: ->
-    if @upPressed then @dirUp else if @downPressed then @dirDown else @dirIdle
-
-  updateBall: ->
+    lastTime = @updateTime
+    @updateTime = @time()
     @moveBall()
-    @checkBallCollision()
+    enemy = @gs[@enemySide]
+    # FIXME Interpolate enemy moves
+    enemy.pos = @moveRacket enemy.dir, enemy.updates, enemy.pos, @updateTime, lastTime
+    me = @gs[@side]
+    @pos = @moveRacket @dir, @dirUpdates, @pos, @updateTime, lastTime
+    me.pos = @pos # FIXME from gs shoulg go, just don't replace it ffrom the server
+    @dir = @dirUpdates[@dirUpdates.length-1].dir if @dirUpdates.length # FIXME: this can go in @gs structure, but shouldn't be rewritten by server
 
   # Keyboard functions
 
@@ -72,25 +69,37 @@ window.Game = class Game extends GameCore
 
   keyboardUp: (evt) ->
     switch evt.which
-      when @keyDown then @downPressed = false; @sendState @dirIdle unless @upPressed
-      when @keyUp   then @upPressed = false; @sendState @dirIdle unless @downPressed
+      when @keyDown
+        @downPressed = false
+        unless @upPressed
+          @sendState @dirIdle
+      when @keyUp
+        @upPressed = false
+        unless @downPressed
+          @sendState @dirIdle
 
   sendState: (dir) ->
-    @socket.emit 'state', {state: dir, side: @side}
+    @dirUpdates.push { dir: dir, seq: ++@seq, t: @time() }
+    @socket.emit 'state', { dir: dir, side: @side, seq: @seq }
 
   # Game view update
 
-  updateScores: ->
-    $('#score_' + @side).text @scores[@side]
-    $('#score_' + @enemySide).text @scores[@enemySide]
-    @updateScoreFlag = false
-  
+  updateScore: (scores) ->
+    for scr, ind in scores
+      $('#score_' + ind).text scr
+
   # Game control functions
 
   startGame: ->
-    canvas = document.getElementById('game_board_canvas')
+    canvas = document.getElementById 'game_board_canvas'
     @ctx = canvas.getContext '2d'
+    @updateTime = @time()
     setInterval (=> @gameLoop()), @dt
+
+  seq2index: (seq) ->
+    for upd, ind in @dirUpdates
+      return ind if upd.seq == seq
+    -1
 
   start: (socket) ->
     @socket = socket
@@ -107,13 +116,16 @@ window.Game = class Game extends GameCore
 
     socket.on 'move', (data) =>
       @gs = data.gamers
+      @pos = @gs[@side].pos if @pos == undefined
+      if @gs[@side].lastSeq <= @lastProcessedSeq
+        howmany = @seq2index(@gs[@side].lastSeq) + 1
+        @dirUpdates.splice 0, howmany
       @ballPosition = data.ball.pos
       @ballV = data.ball.v
       @angle = data.ball.angle
 
     socket.on 'score', (data) =>
-      @scores = data.scores
-      @updateScoreFlag = true
+      @updateScore data.scores
 
     socket.on 'busy', (data) =>
 
